@@ -31,7 +31,7 @@ public struct DiscouragedOptionalCollectionRule: ASTRule, OptInRule, Configurati
 
     private func variableViolations(file: SwiftLintFile,
                                     kind: SwiftDeclarationKind,
-                                    dictionary: SourceKittenDictionary) -> [Int] {
+                                    dictionary: SourceKittenDictionary) -> [ByteCount] {
         guard
             SwiftDeclarationKind.variableKinds.contains(kind),
             let offset = dictionary.offset,
@@ -42,7 +42,7 @@ public struct DiscouragedOptionalCollectionRule: ASTRule, OptInRule, Configurati
 
     private func functionViolations(file: SwiftLintFile,
                                     kind: SwiftDeclarationKind,
-                                    dictionary: SourceKittenDictionary) -> [Int] {
+                                    dictionary: SourceKittenDictionary) -> [ByteCount] {
         guard
             SwiftDeclarationKind.functionKinds.contains(kind),
             let nameOffset = dictionary.nameOffset,
@@ -51,8 +51,9 @@ public struct DiscouragedOptionalCollectionRule: ASTRule, OptInRule, Configurati
             let offset = dictionary.offset,
             case let start = nameOffset + nameLength,
             case let end = dictionary.bodyOffset ?? offset + length,
+            case let byteRange = ByteRange(location: start, length: end - start),
             case let contents = file.stringView,
-            let range = file.stringView.byteRangeToNSRange(start: start, length: end - start),
+            let range = file.stringView.byteRangeToNSRange(byteRange),
             let match = file.match(pattern: "->\\s*(.*?)\\{", excludingSyntaxKinds: excludingKinds, range: range).first
             else { return [] }
 
@@ -89,7 +90,7 @@ private extension String {
     /// = [8, 16]
     /// = [8, 17), mathematical interval, w/ lower and upper bounds.
     ///
-    /// - Returns: An array of ranges.
+    /// - returns: An array of ranges.
     func optionalCollectionRanges() -> [Range<String.Index>] {
         let squareBrackets = balancedRanges(from: "[", to: "]").compactMap { range -> Range<String.Index>? in
             guard
@@ -122,26 +123,29 @@ private extension String {
     ///         ^   ^     ^
     /// = [0, 2, 5]
     ///
-    /// - Parameter character: The character to look for.
-    /// - Returns: Array of indices.
+    /// - parameter character: The character to look for.
+    /// - returns: Array of indices.
     private func indices(of character: Character) -> [String.Index] {
         return indices.compactMap { self[$0] == character ? $0 : nil }
     }
 
     /// Ranges of balanced substrings.
     ///
-    /// Example: ((1+2)*(3+4))
+    /// Example:
     ///
-    ///         (  (  1  +  2  )  *  (  3  +  4  )  )
-    ///         0  1  2  3  4  5  6  7  8  9  10 11 12
-    ///         ^  ^           ^     ^           ^  ^
+    /// ```
+    /// ((1+2)*(3+4))
+    /// (  (  1  +  2  )  *  (  3  +  4  )  )
+    /// 0  1  2  3  4  5  6  7  8  9  10 11 12
+    /// ^ ^            ^     ^           ^  ^
     /// = [0, 12], [1, 5], [7, 11]
     /// = [0, 13), [1, 6), [7, 12), mathematical interval, w/ lower and upper bounds.
+    /// ```
     ///
-    /// - Parameters:
-    ///   - prefix: The prefix to look for.
-    ///   - suffix: The suffix to look for.
-    /// - Returns: Array of ranges of balanced substrings
+    /// - parameter prefix: The prefix to look for.
+    /// - parameter suffix: The suffix to look for.
+    ///
+    /// - returns: Array of ranges of balanced substrings.
     private func balancedRanges(from prefix: Character, to suffix: Character) -> [Range<String.Index>] {
         return indices(of: prefix).compactMap { prefixIndex in
             var pairCount = 0

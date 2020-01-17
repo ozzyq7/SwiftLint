@@ -15,10 +15,10 @@ public struct RedundantVoidReturnRule: ConfigurationProviderRule, SubstitutionCo
         nonTriggeringExamples: [
             "func foo() {}\n",
             "func foo() -> Int {}\n",
-            "func foo() -> Int -> Void {}\n",
+            "func foo() -> (Int) -> Void {}\n",
             "func foo() -> VoidResponse\n",
             "let foo: Int -> Void\n",
-            "func foo() -> Int -> () {}\n",
+            "func foo() -> (Int) -> () {}\n",
             "let foo: Int -> ()\n",
             "func foo() -> ()?\n",
             "func foo() -> ()!\n",
@@ -81,7 +81,8 @@ public struct RedundantVoidReturnRule: ConfigurationProviderRule, SubstitutionCo
             case let start = nameOffset + nameLength,
             case let end = dictionary.bodyOffset ?? offset + length,
             case let contents = file.stringView,
-            let range = contents.byteRangeToNSRange(start: start, length: end - start),
+            case let byteRange = ByteRange(location: start, length: end - start),
+            let range = contents.byteRangeToNSRange(byteRange),
             file.match(pattern: "->", excludingSyntaxKinds: excludingKinds, range: range).count == 1,
             let match = file.match(pattern: pattern, excludingSyntaxKinds: excludingKinds, range: range).first else {
                 return []
